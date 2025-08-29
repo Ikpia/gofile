@@ -227,7 +227,6 @@ def home():
 if __name__ == '__main__':
     print("🚀 Starting Flask Authentication Server...")
     #print(f"📊 Database Config: {app.config['MYSQL_USER']}@{app.config['MYSQL_HOST']}:{app.config['MYSQL_PORT']}")
-    app.run(debug=True, host='127.0.0.1', port=5000)
     # Test database connection first
     
     print("🔍 Testing database connection...")
