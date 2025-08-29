@@ -1,216 +1,4 @@
-'''
-from flask import Flask, request, jsonify, session
-from flask_mysqldb import MySQL
-from werkzeug.security import check_password_hash, generate_password_hash
-from flask_cors import CORS
-import MySQLdb.cursors
-import re
-import os
-from datetime import datetime
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend communication
-
-# MySQL Configuration
-app.config['MYSQL_HOST'] = 'localhost'  # or your MySQL host
-app.config['MYSQL_USER'] = 'emmy'
-app.config['MYSQL_PASSWORD'] = 'emmy'
-app.config['MYSQL_DB'] = 'userDB'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-
-# Secret key for sessions
-app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
-
-# Initialize MySQL
-mysql = MySQL(app)
-
-# Create users table if it doesn't exist
-def init_db():
-    """Initialize database with users table"""
-    cursor = mysql.connection.cursor()
-    cursor.execute('''
-        #CREATE TABLE IF NOT EXISTS users (
-            #id INT AUTO_INCREMENT PRIMARY KEY,
-            #email VARCHAR(255) UNIQUE NOT NULL,
-            #password VARCHAR(255) NOT NULL,
-            #created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            #last_login TIMESTAMP NULL,
-            #is_active BOOLEAN DEFAULT TRUE
-        #)
-''')
-    mysql.connection.commit()
-    cursor.close()
-
-@app.route('/api/signup', methods=['POST'])
-def signin():
-    """Handle user sign in"""
-    try:
-        # Get JSON data from request
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        # Validate input
-        if not email or not password:
-            return jsonify({'message': 'Email and password are required'}), 400
-        
-        # Validate email format
-        if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
-            return jsonify({'message': 'Invalid email format'}), 400
-        
-        # Query database for user
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT * FROM users WHERE email = %s AND is_active = TRUE', (email,))
-        user = cursor.fetchone()
-        
-        if user and check_password_hash(user['password'], password):
-            # Update last login
-            cursor.execute('UPDATE users SET last_login = %s WHERE id = %s', 
-                          (datetime.now(), user['id']))
-            mysql.connection.commit()
-            
-            # Store user info in session
-            session['user_id'] = user['id']
-            session['email'] = user['email']
-            session['logged_in'] = True
-            
-            cursor.close()
-            
-            return jsonify({
-                'message': 'Login successful',
-                'user': {
-                    'id': user['id'],
-                    'email': user['email'],
-                    'last_login': user['last_login']
-                },
-                'redirect': '/dashboard'
-            }), 200
-        else:
-            cursor.close()
-            return jsonify({'message': 'Invalid email or password'}), 401
-            
-    except Exception as e:
-        print(f"Error in signin: {str(e)}")
-        return jsonify({'message': 'An error occurred during sign in'}), 500
-
-@app.route('/api/signin', methods=['POST'])
-def register():
-    """Handle user signin"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        # Validate input
-        if not email or not password:
-            return jsonify({'message': 'Email and password are required'}), 400
-        
-        # Validate email format
-        if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
-            return jsonify({'message': 'Invalid email format'}), 400
-        
-        cursor = mysql.connection.cursor()
-        
-        # Check if user already exists
-        cursor.execute('SELECT id FROM users WHERE email = %s', (email,))
-        if cursor.fetchone():
-            cursor.close()
-            return jsonify({'message': 'Email already registered'}), 409
-        
-        # Hash password and insert user
-        #hashed_password = generate_password_hash(password)
-        cursor.execute('INSERT INTO users (email, password) VALUES (%s, %s)', 
-                      (email, password))
-        mysql.connection.commit()
-        
-        # Get the new user ID
-        user_id = cursor.lastrowid
-        cursor.close()
-        
-        return jsonify({
-            'message': 'Registration successful',
-            'user': {
-                'id': user_id,
-                'email': email
-            }
-        }), 201
-        
-    except Exception as e:
-        print(f"Error in register: {str(e)}")
-        return jsonify({'message': 'An error occurred during registration'}), 500
-
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    """Handle user logout"""
-    session.clear()
-    return jsonify({'message': 'Logged out successfully'}), 200
-
-@app.route('/api/user', methods=['GET'])
-def get_user():
-    """Get current user info"""
-    if 'logged_in' in session and session['logged_in']:
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT id, email, created_at, last_login FROM users WHERE id = %s', 
-                      (session['user_id'],))
-        user = cursor.fetchone()
-        cursor.close()
-        
-        if user:
-            return jsonify({
-                'user': {
-                    'id': user['id'],
-                    'email': user['email'],
-                    'created_at': user['created_at'],
-                    'last_login': user['last_login']
-                }
-            }), 200
-    
-    return jsonify({'message': 'Not authenticated'}), 401
-
-@app.route('/api/check-auth', methods=['GET'])
-def check_auth():
-    """Check if user is authenticated"""
-    if 'logged_in' in session and session['logged_in']:
-        return jsonify({'authenticated': True, 'user_id': session['user_id']}), 200
-    return jsonify({'authenticated': False}), 401
-
-# Dashboard route (example protected route)
-@app.route('/dashboard')
-def dashboard():
-    """Protected dashboard route"""
-    if 'logged_in' not in session or not session['logged_in']:
-        return jsonify({'message': 'Please log in to access this page'}), 401
-    
-    return f"Welcome to dashboard, {session['email']}!"
-
-# Error handlers
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'message': 'Endpoint not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'message': 'Internal server error'}), 500
-
-if __name__ == '__main__':
-    # Initialize database on startup
-    with app.app_context():
-        init_db()
-    
-    # Run the app
-    app.run(debug=True, host='0.0.0.0', port=5000)
-'''
-
-
-from flask import Flask, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session
 import pymysql
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_cors import CORS
@@ -222,7 +10,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__)
+#app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)  # Enable CORS for frontend communication
 
 # MySQL Configuration using PyMySQL
@@ -431,16 +220,16 @@ def dashboard():
     
     return f"Welcome to dashboard, {session['email']}!"
 
-@app.route('/')
+@app.route("/")
 def home():
-    """Home route"""
-    return "Flask Authentication Server is running!"
+    return render_template("auth.html")
 
 if __name__ == '__main__':
     print("🚀 Starting Flask Authentication Server...")
-    print(f"📊 Database Config: {app.config['MYSQL_USER']}@{app.config['MYSQL_HOST']}:{app.config['MYSQL_PORT']}")
-    
+    #print(f"📊 Database Config: {app.config['MYSQL_USER']}@{app.config['MYSQL_HOST']}:{app.config['MYSQL_PORT']}")
+    app.run(debug=True, host='127.0.0.1', port=5000)
     # Test database connection first
+    
     print("🔍 Testing database connection...")
     if init_db():
         print("✅ Database setup complete!")

